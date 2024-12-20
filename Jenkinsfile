@@ -1,39 +1,14 @@
-
 pipeline {
     agent any
     
     environment {
-        MAVEN_HOME = '/usr/local/maven'  // Percorso Maven corretto
-        JAVA_HOME = '/usr/lib/jvm/java-8-openjdk-amd64'  // Percorso Java corretto
+        MAVEN_HOME = '/usr/local/maven'  // Percorso Maven corretto (assumiamo che sia già presente)
+        JAVA_HOME = '/usr/lib/jvm/java-8-openjdk-amd64'  // Percorso Java corretto (assumiamo che sia già presente)
         PATH = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"  // Aggiungi Maven e Java al PATH
     }
 
     stages {
-        // 1. Installazione del software necessario
-        stage('Install Software') {
-            steps {
-                echo "Installazione di Maven e Java..."
-                script {
-                    // Installa Java e Maven se non sono già presenti
-                    sh '''
-                    # Verifica se Maven è installato
-                    if ! command -v mvn &> /dev/null; then
-                        echo "Maven non trovato, procedo con l'installazione..."
-                        apt-get update
-                        apt-get install -y maven
-                    fi
-                    
-                    # Verifica se Java è installato
-                    if ! command -v java &> /dev/null; then
-                        echo "Java non trovato, procedo con l'installazione..."
-                        apt-get install -y openjdk-8-jdk
-                    fi
-                    '''
-                }
-            }
-        }
-
-        // 2. Checkout del codice sorgente
+        // 1. Checkout del codice sorgente
         stage('Checkout') {
             steps {
                 echo "Checkout del codice..."
@@ -41,7 +16,7 @@ pipeline {
             }
         }
 
-        // 3. Build e test iniziale
+        // 2. Build e test iniziale
         stage('Build and Test') {
             steps {
                 echo "Eseguiamo il build e i test..."
@@ -52,7 +27,7 @@ pipeline {
             }
         }
         
-        // 4. Verifica della copertura dei test
+        // 3. Verifica della copertura dei test
         stage('Check Test Coverage') {
             steps {
                 echo "Verifica della copertura dei test..."
@@ -73,7 +48,7 @@ pipeline {
             }
         }
         
-        // 5. Generazione dei test mancanti se la copertura è inferiore all'80%
+        // 4. Generazione dei test mancanti se la copertura è inferiore all'80%
         stage('Generate Missing Tests') {
             when {
                 expression {
@@ -91,7 +66,7 @@ pipeline {
             }
         }
 
-        // 6. Ricompilazione e test con i nuovi test generati
+        // 5. Ricompilazione e test con i nuovi test generati
         stage('Rebuild and Test with New Tests') {
             when {
                 expression {
@@ -109,7 +84,7 @@ pipeline {
             }
         }
 
-        // 7. Verifica finale della copertura
+        // 6. Verifica finale della copertura
         stage('Final Coverage Check') {
             steps {
                 echo "Verifica finale della copertura..."
