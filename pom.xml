@@ -15,16 +15,42 @@
      </properties>
 
       <dependencies>
-           <dependency>
+	    <!-- Aggiungi EvoSuite come dipendenza di test -->
+    	<dependency>
+        	<groupId>org.evosuite</groupId>
+        	<artifactId>evosuite-standalone-runtime</artifactId>
+        	<version>1.1.0</version>
+        	<scope>test</scope>
+    	</dependency>
+
+        <dependency>
                <groupId>joda-time</groupId>
                <artifactId>joda-time</artifactId>
                <version>2.2</version>
-           </dependency>
+        </dependency>
        </dependencies>
        <!-- end::joda[] -->
        
     <build>
         <plugins>
+	    <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.8.8</version> <!-- Assicurati di avere l'ultima versione -->
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>prepare-agent</goal> <!-- Prepara l'agente JaCoCo per la copertura -->
+                    </goals>
+                </execution>
+                <execution>
+                    <goals>
+                        <goal>report</goal> <!-- Crea il report di copertura -->
+                    </goals>
+                    <phase>verify</phase> <!-- Esegui nella fase di verify -->
+                </execution>
+            </executions>
+        </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
