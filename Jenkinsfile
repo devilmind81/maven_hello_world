@@ -14,10 +14,10 @@ pipeline {
                     // Installa Maven a runtime
                     sh """
                     echo 'Installing Maven...'
-                    wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
-                    tar xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz
-                    export MAVEN_HOME=$(pwd)/apache-maven-${MAVEN_VERSION}
-                    export PATH=$MAVEN_HOME/bin:$PATH
+                    wget https://archive.apache.org/dist/maven/maven-3/\${MAVEN_VERSION}/binaries/apache-maven-\${MAVEN_VERSION}-bin.tar.gz
+                    tar xzf apache-maven-\${MAVEN_VERSION}-bin.tar.gz
+                    export MAVEN_HOME=$(pwd)/apache-maven-\${MAVEN_VERSION}
+                    export PATH=\$MAVEN_HOME/bin:\$PATH
                     echo 'Maven installed'
                     """
 
@@ -27,7 +27,7 @@ pipeline {
                     wget https://download.java.net/java/GA/jdk${JAVA_VERSION}/binaries/openjdk-${JAVA_VERSION}_linux-x64_bin.tar.gz
                     tar xzf openjdk-${JAVA_VERSION}_linux-x64_bin.tar.gz
                     export JAVA_HOME=$(pwd)/jdk-${JAVA_VERSION}
-                    export PATH=$JAVA_HOME/bin:$PATH
+                    export PATH=\$JAVA_HOME/bin:\$PATH
                     echo 'Java 17 installed'
                     """
                     
@@ -85,4 +85,3 @@ pipeline {
         }
     }
 }
-
