@@ -1,45 +1,54 @@
 pipeline {
     agent any
-    tools {
-        maven 'Maven_3.8.1'  // Configura Maven nel tuo Jenkins
-        jdk 'Java_17'        // Configura la versione di Java
+    environment {
+        MAVEN_VERSION = '3.8.1'
+        MAVEN_HOME = "${tool 'Maven'}"  // Usa Maven scaricato in automatico
+        PATH = "${MAVEN_HOME}/bin:${env.PATH}"
     }
     stages {
-        // Stage 1: Checkout del codice dal repository
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        // Stage 2: Build e test con Maven
-        stage('Build and Test') {
+        stage('Install Maven') {
             steps {
-                sh 'mvn clean test'
+                script {
+                    // Scarica Maven a runtime
+                    sh '''
+                    wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+                    tar xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz
+                    export MAVEN_HOME=$(pwd)/apache-maven-${MAVEN_VERSION}
+                    export PATH=$MAVEN_HOME/bin:$PATH
+                    '''
+                }
             }
         }
 
-        // Stage 3: Copertura del codice con JaCoCo
+        stage('Build and Test') {
+            steps {
+                sh 'mvn clean test'  // Usa Maven scaricato dinamicamente
+            }
+        }
+
         stage('Code Coverage with JaCoCo') {
             steps {
                 sh 'mvn jacoco:report'
             }
             post {
                 always {
-                    // Usa publishCoverage per pubblicare il report di copertura
                     publishCoverage adapters: [jacocoAdapter('target/site/jacoco/index.html')]
                 }
             }
         }
 
-        // Stage 4: Esecuzione di EvoSuite per generare test
         stage('Generate Tests with EvoSuite') {
             steps {
                 sh 'mvn org.evosuite:evosuite-maven-plugin:generate-tests'
             }
         }
 
-        // Stage 5: Esecuzione dei test generati
         stage('Run Generated Tests') {
             steps {
                 sh 'mvn test'
@@ -49,8 +58,7 @@ pipeline {
 
     post {
         always {
-            junit '**/target/surefire-reports/*.xml'  // Pubblica i risultati dei test
+            junit '**/target/surefire-reports/*.xml'
         }
     }
 }
-
