@@ -2,11 +2,23 @@ pipeline {
     agent any
 
     environment {
-        MAVEN_VERSION = '3.8.6'  // Imposta la versione di Maven che desideri utilizzare
-        MAVEN_HOME = "/tmp/apache-maven-${MAVEN_VERSION}"  // Imposta una directory scrivibile per Maven
+        // Variabili di ambiente per Maven
+        MAVEN_VERSION = '3.8.6'
+        MAVEN_HOME = "/tmp/apache-maven-${MAVEN_VERSION}"
+        PATH = "$MAVEN_HOME/bin:$PATH"
+        
+        // Variabile per il percorso di EvoSuite
+        EVOSUITE_PATH = "/tmp/evosuite-1.0.6.jar"
     }
 
     stages {
+        stage('Checkout SCM') {
+            steps {
+                echo "Checking out the repository..."
+                checkout scm
+            }
+        }
+
         stage('Install Maven') {
             steps {
                 script {
@@ -17,6 +29,9 @@ pipeline {
                         export MAVEN_HOME=/tmp/apache-maven-${MAVEN_VERSION}
                         export PATH=\$MAVEN_HOME/bin:\$PATH
                     """
+                    // Verifica che Maven sia stato installato correttamente
+                    sh 'echo $PATH'
+                    sh 'mvn -version'
                 }
             }
         }
@@ -25,9 +40,9 @@ pipeline {
             steps {
                 script {
                     echo "Installing EvoSuite..."
-                    // Scarica e installa EvoSuite
+                    // Scarica EvoSuite nella directory temporanea
                     sh """
-                        curl -s https://github.com/EvoSuite/evosuite/releases/download/v1.0.6/evosuite-1.0.6.jar -o /tmp/evosuite-1.0.6.jar
+                        curl -s https://github.com/EvoSuite/evosuite/releases/download/v1.0.6/evosuite-1.0.6.jar -o $EVOSUITE_PATH
                     """
                 }
             }
@@ -35,54 +50,71 @@ pipeline {
 
         stage('Initial JaCoCo Coverage') {
             steps {
-                script {
-                    echo "Checking initial JaCoCo code coverage..."
-                    // Verifica la copertura del codice prima di generare i test
-                    sh 'mvn clean test jacoco:report'
-                    // Visualizza la copertura del codice prima della generazione dei test
-                    jacoco execPattern: '**/target/jacoco.exec', classPattern: '**/target/classes', sourcePattern: '**/src/main/java'
-                }
+                echo "Checking initial JaCoCo code coverage..."
+                // Esegui i test per ottenere la copertura iniziale
+                sh """
+                    mvn clean test jacoco:report
+                """
+                // Visualizza il rapporto di copertura JaCoCo
+                sh """
+                    tail -n 10 target/site/jacoco/index.html
+                """
             }
         }
 
         stage('Generate Tests with EvoSuite') {
             steps {
-                script {
-                    echo "Generating tests with EvoSuite..."
-                    // Genera i test con EvoSuite (specifica la directory dei sorgenti Java)
-                    sh """
-                        java -jar /tmp/evosuite-1.0.6.jar -class <nome.classe> -projectCP <path-al-classpath>
-                    """
-                }
+                echo "Generating tests using EvoSuite..."
+                // Genera i test con EvoSuite per tutte le classi nel package principale
+                sh """
+                    java -jar $EVOSUITE_PATH -class com.yourpackage.YourMainClass -projectDir target/evoTests
+                """
             }
         }
 
         stage('Run Tests, Recalculate Coverage') {
             steps {
-                script {
-                    echo "Running tests and recalculating code coverage with JaCoCo..."
-                    // Esegui Maven per il build, i test e generare la copertura con JaCoCo dopo i test generati
-                    sh 'mvn clean test jacoco:report'
-                }
+                echo "Running tests and recalculating coverage..."
+                // Esegui di nuovo i test con la generazione di nuovi test da EvoSuite e calcola la copertura
+                sh """
+                    mvn clean test jacoco:report
+                """
+                // Visualizza il rapporto di copertura JaCoCo
+                sh """
+                    tail -n 10 target/site/jacoco/index.html
+                """
             }
         }
 
         stage('JUnit Results') {
             steps {
-                script {
-                    echo "Collecting JUnit test results..."
-                    // Raccogli i risultati dei test JUnit
-                    junit '**/target/test-*.xml'  // Aggiungi il pattern corretto per i file di report JUnit
-                }
+                echo "Collecting JUnit results..."
+                // Raccogli e pubblica i risultati dei test JUnit
+                junit '**/target/test-*.xml'
             }
         }
 
         stage('Final JaCoCo Coverage') {
             steps {
+                echo "Checking final JaCoCo coverage..."
+                // Verifica la copertura finale di JaCoCo dopo aver eseguito i nuovi test
+                sh """
+                    tail -n 10 target/site/jacoco/index.html
+                """
+            }
+        }
+
+        stage('Post-build Actions') {
+            steps {
+                echo "Post-build actions..."
+                // Stampa un messaggio in base al risultato della build
                 script {
-                    echo "Collecting final JaCoCo code coverage..."
-                    // Raccogli i risultati della copertura del codice JaCoCo dopo l'esecuzione dei test
-                    jacoco execPattern: '**/target/jacoco.exec', classPattern: '**/target/classes', sourcePattern: '**/src/main/java'
+                    def buildStatus = currentBuild.currentResult
+                    if (buildStatus == 'SUCCESS') {
+                        echo "Build, tests, and coverage calculations were successful!"
+                    } else {
+                        echo "Build, tests, or coverage failed."
+                    }
                 }
             }
         }
@@ -90,18 +122,16 @@ pipeline {
 
     post {
         always {
-            // Azioni da eseguire sempre dopo il build
-            echo "Post-build actions..."
+            echo "Cleaning up after the build..."
+            // Pulizia finale, se necessario
+            deleteDir()
         }
-
         success {
-            // Azioni da eseguire se il build ha successo
-            echo "Build, tests, and coverage were successful!"
+            echo "The pipeline completed successfully!"
         }
-
         failure {
-            // Azioni da eseguire se il build fallisce
-            echo "Build, tests, or coverage failed."
+            echo "The pipeline failed. Please check the logs for details."
         }
     }
 }
+
