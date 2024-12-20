@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         MAVEN_VERSION = '3.8.6'  // Sostituisci con la versione di Maven che desideri
-        JAVA_VERSION = 'openjdk-8u292-b10'  // Sostituisci con la versione di Java che desideri
+        JAVA_VERSION = 'openjdk-11'  // Sostituisci con la versione di Java che desideri
         MAVEN_HOME = "${WORKSPACE}/maven"  // Installazione Maven all'interno della workspace
         JAVA_HOME = "${WORKSPACE}/java"  // Installazione Java all'interno della workspace
         PATH = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"  // Aggiungi Maven e Java al PATH
@@ -26,7 +26,7 @@ pipeline {
                     // Scarica e decomprimi Maven
                     sh """
                         mkdir -p ${MAVEN_HOME}
-                        curl -sL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | tar xz -C ${MAVEN_HOME} --strip-components=1
+                        curl -sL https://apache.mirror.digitalpacific.com.au/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | tar xz -C ${MAVEN_HOME} --strip-components=1
                     """
                 }
             }
@@ -37,10 +37,10 @@ pipeline {
             steps {
                 echo "Installiamo Java..."
                 script {
-                    // Scarica e decomprimi Java
+                    // Scarica e decomprimi OpenJDK 11
                     sh """
                         mkdir -p ${JAVA_HOME}
-                        curl -sL https://download.java.net/java/GA/jdk8/8u292-b10/5d4f34ff1c214ea8a34b09f13f3253c0/installer/jdk-8u292-linux-x64.tar.gz | tar xz -C ${JAVA_HOME} --strip-components=1
+                        curl -sL https://download.java.net/java/GA/jdk11/11.0.13+8/9db8ff47eb3d41ec8a0a1bcbfc4c79c4/13/GPL/openjdk-11.0.13_linux-x64_bin.tar.gz | tar xz -C ${JAVA_HOME} --strip-components=1
                     """
                 }
             }
