@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -75,7 +76,7 @@ pipeline {
                 echo 'Verifica della copertura di test...'
                 script {
                     // Estraiamo la percentuale di copertura dei test da JaCoCo
-                    def coverage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    def coverage = sh(script: "grep -oP 'Total.*\\K\\d+(\\.\\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
                     echo "Copertura dei test: ${coverage}%"
 
                     // Se la copertura è inferiore all'80%, segnala e genera i test con EvoSuite
