@@ -36,12 +36,16 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.8</version> <!-- Assicurati di avere l'ultima versione -->
                 <executions>
+                    <!-- Esecuzione per preparare l'agente JaCoCo -->
                     <execution>
+                        <id>prepare-agent</id> <!-- ID univoco -->
                         <goals>
                             <goal>prepare-agent</goal> <!-- Prepara l'agente JaCoCo per la copertura -->
                         </goals>
                     </execution>
+                    <!-- Esecuzione per creare il report JaCoCo -->
                     <execution>
+                        <id>report</id> <!-- ID univoco -->
                         <goals>
                             <goal>report</goal> <!-- Crea il report di copertura -->
                         </goals>
