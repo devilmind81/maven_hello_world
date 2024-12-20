@@ -1,8 +1,9 @@
 pipeline {
     agent any
-    
+
     environment {
-        MAVEN_HOME = '/usr/local/maven'  // Percorso Maven corretto (assumiamo che sia già presente)
+        MAVEN_VERSION = '3.8.6'  // Sostituisci con la versione di Maven che desideri
+        MAVEN_HOME = "${WORKSPACE}/maven"  // Installazione Maven all'interno della workspace
         JAVA_HOME = '/usr/lib/jvm/java-8-openjdk-amd64'  // Percorso Java corretto (assumiamo che sia già presente)
         PATH = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"  // Aggiungi Maven e Java al PATH
     }
@@ -16,25 +17,39 @@ pipeline {
             }
         }
 
-        // 2. Build e test iniziale
+        // 2. Installazione di Maven
+        stage('Install Maven') {
+            steps {
+                echo "Installiamo Maven..."
+                script {
+                    // Scarica e decomprimi Maven
+                    sh """
+                        mkdir -p ${MAVEN_HOME}
+                        curl -sL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | tar xz -C ${MAVEN_HOME} --strip-components=1
+                    """
+                }
+            }
+        }
+
+        // 3. Build e test iniziale
         stage('Build and Test') {
             steps {
                 echo "Eseguiamo il build e i test..."
                 script {
-                    // Compilazione e esecuzione dei test
+                    // Esegui Maven per compilare e testare
                     sh "'${MAVEN_HOME}/bin/mvn' clean install"
                 }
             }
         }
-        
-        // 3. Verifica della copertura dei test
+
+        // 4. Verifica della copertura dei test
         stage('Check Test Coverage') {
             steps {
                 echo "Verifica della copertura dei test..."
                 script {
                     // Estrazione della percentuale di copertura dai report JaCoCo
                     def coveragePercentage = sh(script: "grep -oP 'Total.*\\K\\d+(\\.\\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
-                    
+
                     echo "Percentuale di copertura: ${coveragePercentage}%"
 
                     // Se la copertura è inferiore all'80%, segnaliamo in grassetto e impostiamo il risultato come UNSTABLE
@@ -47,8 +62,8 @@ pipeline {
                 }
             }
         }
-        
-        // 4. Generazione dei test mancanti se la copertura è inferiore all'80%
+
+        // 5. Generazione dei test mancanti se la copertura è inferiore all'80%
         stage('Generate Missing Tests') {
             when {
                 expression {
@@ -66,7 +81,7 @@ pipeline {
             }
         }
 
-        // 5. Ricompilazione e test con i nuovi test generati
+        // 6. Ricompilazione e test con i nuovi test generati
         stage('Rebuild and Test with New Tests') {
             when {
                 expression {
@@ -84,14 +99,14 @@ pipeline {
             }
         }
 
-        // 6. Verifica finale della copertura
+        // 7. Verifica finale della copertura
         stage('Final Coverage Check') {
             steps {
                 echo "Verifica finale della copertura..."
                 script {
                     // Estrazione della copertura finale dal report JaCoCo
                     def coveragePercentage = sh(script: "grep -oP 'Total.*\\K\\d+(\\.\\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
-                    
+
                     echo "Copertura finale: ${coveragePercentage}%"
 
                     // Se la copertura finale è ancora inferiore all'80%, fallisce la build
@@ -104,7 +119,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             echo "Pulizia ambiente di lavoro..."
