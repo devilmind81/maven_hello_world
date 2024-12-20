@@ -3,8 +3,9 @@ pipeline {
 
     environment {
         MAVEN_VERSION = '3.8.6'  // Sostituisci con la versione di Maven che desideri
+        JAVA_VERSION = 'openjdk-8u292-b10'  // Sostituisci con la versione di Java che desideri
         MAVEN_HOME = "${WORKSPACE}/maven"  // Installazione Maven all'interno della workspace
-        JAVA_HOME = '/usr/lib/jvm/java-8-openjdk-amd64'  // Percorso Java corretto (assumiamo che sia già presente)
+        JAVA_HOME = "${WORKSPACE}/java"  // Installazione Java all'interno della workspace
         PATH = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"  // Aggiungi Maven e Java al PATH
     }
 
@@ -31,7 +32,21 @@ pipeline {
             }
         }
 
-        // 3. Build e test iniziale
+        // 3. Installazione di Java
+        stage('Install Java') {
+            steps {
+                echo "Installiamo Java..."
+                script {
+                    // Scarica e decomprimi Java
+                    sh """
+                        mkdir -p ${JAVA_HOME}
+                        curl -sL https://download.java.net/java/GA/jdk8/8u292-b10/5d4f34ff1c214ea8a34b09f13f3253c0/installer/jdk-8u292-linux-x64.tar.gz | tar xz -C ${JAVA_HOME} --strip-components=1
+                    """
+                }
+            }
+        }
+
+        // 4. Build e test iniziale
         stage('Build and Test') {
             steps {
                 echo "Eseguiamo il build e i test..."
@@ -42,7 +57,7 @@ pipeline {
             }
         }
 
-        // 4. Verifica della copertura dei test
+        // 5. Verifica della copertura dei test
         stage('Check Test Coverage') {
             steps {
                 echo "Verifica della copertura dei test..."
@@ -63,7 +78,7 @@ pipeline {
             }
         }
 
-        // 5. Generazione dei test mancanti se la copertura è inferiore all'80%
+        // 6. Generazione dei test mancanti se la copertura è inferiore all'80%
         stage('Generate Missing Tests') {
             when {
                 expression {
@@ -81,7 +96,7 @@ pipeline {
             }
         }
 
-        // 6. Ricompilazione e test con i nuovi test generati
+        // 7. Ricompilazione e test con i nuovi test generati
         stage('Rebuild and Test with New Tests') {
             when {
                 expression {
@@ -99,7 +114,7 @@ pipeline {
             }
         }
 
-        // 7. Verifica finale della copertura
+        // 8. Verifica finale della copertura
         stage('Final Coverage Check') {
             steps {
                 echo "Verifica finale della copertura..."
