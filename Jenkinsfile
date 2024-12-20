@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
     
@@ -57,7 +58,7 @@ pipeline {
                 echo "Verifica della copertura dei test..."
                 script {
                     // Estrazione della percentuale di copertura dai report JaCoCo
-                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\\K\\d+(\\.\\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
                     
                     echo "Percentuale di copertura: ${coveragePercentage}%"
 
@@ -77,7 +78,7 @@ pipeline {
             when {
                 expression {
                     // Controlla se la copertura è inferiore all'80%
-                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\\K\\d+(\\.\\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
                     return coveragePercentage.toFloat() < 80
                 }
             }
@@ -95,7 +96,7 @@ pipeline {
             when {
                 expression {
                     // Assicurati che la generazione dei test sia avvenuta
-                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\\K\\d+(\\.\\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
                     return coveragePercentage.toFloat() < 80
                 }
             }
@@ -114,7 +115,7 @@ pipeline {
                 echo "Verifica finale della copertura..."
                 script {
                     // Estrazione della copertura finale dal report JaCoCo
-                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\\K\\d+(\\.\\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
                     
                     echo "Copertura finale: ${coveragePercentage}%"
 
@@ -136,5 +137,3 @@ pipeline {
         }
     }
 }
-
-
