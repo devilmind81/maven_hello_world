@@ -28,32 +28,56 @@
             <version>2.2</version>
         </dependency>
     </dependencies>
-       
+
     <build>
         <plugins>
+            <!-- Verifica la presenza di test -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.8</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <tasks>
+                                <echo message="Checking for tests..." />
+                                <available file="${project.basedir}/src/test/java" property="tests.present" />
+                                <fail if="tests.present" message="**WARNING: No tests found! Please add tests to the project!**" />
+                            </tasks>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- JaCoCo Plugin per la copertura del codice -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.8</version> <!-- Assicurati di avere l'ultima versione -->
+                <version>0.8.8</version>
                 <executions>
                     <!-- Esecuzione per preparare l'agente JaCoCo -->
                     <execution>
-                        <id>prepare-agent</id> <!-- ID univoco -->
+                        <id>prepare-agent</id>
                         <goals>
-                            <goal>prepare-agent</goal> <!-- Prepara l'agente JaCoCo per la copertura -->
+                            <goal>prepare-agent</goal>
                         </goals>
                     </execution>
                     <!-- Esecuzione per creare il report JaCoCo -->
                     <execution>
-                        <id>report</id> <!-- ID univoco -->
+                        <id>report</id>
                         <goals>
-                            <goal>report</goal> <!-- Crea il report di copertura -->
+                            <goal>report</goal>
                         </goals>
-                        <phase>verify</phase> <!-- Esegui nella fase di verify -->
+                        <phase>verify</phase>
                     </execution>
                 </executions>
             </plugin>
-            
+
+            <!-- Shade Plugin per la creazione del JAR eseguibile -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -77,3 +101,4 @@
         </plugins>
     </build>
 </project>
+

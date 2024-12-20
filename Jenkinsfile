@@ -1,136 +1,102 @@
 pipeline {
     agent any
-
+    
     environment {
-        // Variabili di ambiente per Maven
-        MAVEN_VERSION = '3.8.6'
-        MAVEN_HOME = "/tmp/apache-maven-${MAVEN_VERSION}"
-        PATH = "$MAVEN_HOME/bin:$PATH"
-        
-        // Variabile per il percorso di EvoSuite
-        EVOSUITE_PATH = "/tmp/evosuite-1.0.6.jar"
+        MAVEN_HOME = '/usr/local/maven'  // Sostituire con il percorso Maven corretto
+        JAVA_HOME = '/usr/lib/jvm/java-8-openjdk-amd64'  // Sostituire con il percorso Java corretto
     }
-
+    
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
-                echo "Checking out the repository..."
                 checkout scm
             }
         }
 
-        stage('Install Maven') {
+        stage('Build and Test') {
             steps {
                 script {
-                    echo "Installing Maven..."
-                    // Installa Maven in una directory temporanea
-                    sh """
-                        curl -s https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | tar xz -C /tmp
-                        export MAVEN_HOME=/tmp/apache-maven-${MAVEN_VERSION}
-                        export PATH=\$MAVEN_HOME/bin:\$PATH
-                    """
-                    // Verifica che Maven sia stato installato correttamente
-                    sh 'echo $PATH'
-                    sh 'mvn -version'
+                    // Esegui il comando Maven per compilare il progetto e eseguire i test
+                    sh "'${MAVEN_HOME}/bin/mvn' clean install"
                 }
             }
         }
-
-        stage('Install EvoSuite') {
+        
+        stage('Check Test Coverage') {
             steps {
                 script {
-                    echo "Installing EvoSuite..."
-                    // Scarica EvoSuite nella directory temporanea
-                    sh """
-                        curl -s https://github.com/EvoSuite/evosuite/releases/download/v1.0.6/evosuite-1.0.6.jar -o $EVOSUITE_PATH
-                    """
-                }
-            }
-        }
+                    // Analizza il report di JaCoCo per la percentuale di copertura
+                    def coverage = sh(script: "'${MAVEN_HOME}/bin/mvn' jacoco:report", returnStdout: true).trim()
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    
+                    echo "Coverage Percentage: ${coveragePercentage}%"
 
-        stage('Initial JaCoCo Coverage') {
-            steps {
-                echo "Checking initial JaCoCo code coverage..."
-                // Esegui i test per ottenere la copertura iniziale
-                sh """
-                    mvn clean test jacoco:report
-                """
-                // Visualizza il rapporto di copertura JaCoCo
-                sh """
-                    tail -n 10 target/site/jacoco/index.html
-                """
-            }
-        }
-
-        stage('Generate Tests with EvoSuite') {
-            steps {
-                echo "Generating tests using EvoSuite..."
-                // Genera i test con EvoSuite per tutte le classi nel package principale
-                sh """
-                    java -jar $EVOSUITE_PATH -class com.yourpackage.YourMainClass -projectDir target/evoTests
-                """
-            }
-        }
-
-        stage('Run Tests, Recalculate Coverage') {
-            steps {
-                echo "Running tests and recalculating coverage..."
-                // Esegui di nuovo i test con la generazione di nuovi test da EvoSuite e calcola la copertura
-                sh """
-                    mvn clean test jacoco:report
-                """
-                // Visualizza il rapporto di copertura JaCoCo
-                sh """
-                    tail -n 10 target/site/jacoco/index.html
-                """
-            }
-        }
-
-        stage('JUnit Results') {
-            steps {
-                echo "Collecting JUnit results..."
-                // Raccogli e pubblica i risultati dei test JUnit
-                junit '**/target/test-*.xml'
-            }
-        }
-
-        stage('Final JaCoCo Coverage') {
-            steps {
-                echo "Checking final JaCoCo coverage..."
-                // Verifica la copertura finale di JaCoCo dopo aver eseguito i nuovi test
-                sh """
-                    tail -n 10 target/site/jacoco/index.html
-                """
-            }
-        }
-
-        stage('Post-build Actions') {
-            steps {
-                echo "Post-build actions..."
-                // Stampa un messaggio in base al risultato della build
-                script {
-                    def buildStatus = currentBuild.currentResult
-                    if (buildStatus == 'SUCCESS') {
-                        echo "Build, tests, and coverage calculations were successful!"
+                    // Evidenzia la copertura in grassetto se inferiore all'80%
+                    if (coveragePercentage.toFloat() < 80) {
+                        echo "\033[1m**Coverage is below 80%! (${coveragePercentage}%)**\033[0m"
+                        currentBuild.result = 'UNSTABLE'
                     } else {
-                        echo "Build, tests, or coverage failed."
+                        echo "\033[1mCoverage is above 80% (${coveragePercentage}%)\033[0m"
+                    }
+                }
+            }
+        }
+        
+        stage('Generate Missing Tests') {
+            when {
+                expression {
+                    // Verifica se la copertura è inferiore all'80%
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    return coveragePercentage.toFloat() < 80
+                }
+            }
+            steps {
+                script {
+                    echo "Generating missing tests to improve coverage..."
+                    
+                    // Esegui EvoSuite per generare i test mancanti
+                    sh "'${MAVEN_HOME}/bin/mvn' clean test -Devosuite"
+                }
+            }
+        }
+
+        stage('Rebuild and Test with New Tests') {
+            when {
+                expression {
+                    // Assicura che il passo 'Generate Missing Tests' sia stato eseguito
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+                    return coveragePercentage.toFloat() < 80
+                }
+            }
+            steps {
+                script {
+                    // Ricompila il progetto con i nuovi test generati
+                    sh "'${MAVEN_HOME}/bin/mvn' clean install"
+                }
+            }
+        }
+
+        stage('Final Coverage Check') {
+            steps {
+                script {
+                    // Analizza nuovamente la copertura finale
+                    def coveragePercentage = sh(script: "grep -oP 'Total.*\K\d+(\.\d+)?' target/site/jacoco/index.html", returnStdout: true).trim()
+
+                    echo "Final Coverage: ${coveragePercentage}%"
+                    if (coveragePercentage.toFloat() < 80) {
+                        error "Coverage is still below 80%. Please fix the missing tests."
+                    } else {
+                        echo "\033[1mFinal Coverage is above 80% (${coveragePercentage}%)\033[0m"
                     }
                 }
             }
         }
     }
-
+    
     post {
         always {
-            echo "Cleaning up after the build..."
-            // Pulizia finale, se necessario
-            deleteDir()
-        }
-        success {
-            echo "The pipeline completed successfully!"
-        }
-        failure {
-            echo "The pipeline failed. Please check the logs for details."
+            // Rimuove i report di JaCoCo se esistono
+            cleanWs()
         }
     }
 }
